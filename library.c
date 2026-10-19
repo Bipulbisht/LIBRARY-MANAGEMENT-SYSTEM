@@ -1,18 +1,3 @@
-/*
- * ===============================================================
- *  LIBRARY MANAGEMENT SYSTEM  -  DSA Mini Project (C Language)
- * ===============================================================
- *  Data Structures used:
- *    1. Singly Linked List : stores all books (dynamic size)
- *    2. Binary Search Tree : fast search by Book ID, sorted display
- *    3. Queue (FIFO)       : waiting list of students for each book
- *    4. Stack (LIFO)       : history of actions + Undo
- *
- *  Compile :  gcc library.c -o library
- *  Run     :  ./library        (Windows: library.exe)
- * ===============================================================
- */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,51 +6,38 @@
 #define PERSON_LEN 40
 #define DATA_FILE  "books.txt"
 
-/* ------------------------------------------------------------
- *  STRUCTURES
- * ------------------------------------------------------------ */
-
-/* QUEUE node: one student waiting for a book */
 typedef struct WaitNode {
     char student[PERSON_LEN];
     struct WaitNode *next;
 } WaitNode;
 
-/* LINKED LIST node: one book */
 typedef struct Book {
     int id;
     char title[NAME_LEN];
     char author[NAME_LEN];
-    char issuedTo[PERSON_LEN];      /* empty string = available        */
-    WaitNode *wFront, *wRear;       /* front and rear of waiting queue */
+    char issuedTo[PERSON_LEN];
+    WaitNode *wFront, *wRear;
     struct Book *next;
 } Book;
 
-/* BST node: index of books by ID (points to the book in the list) */
 typedef struct TreeNode {
     int id;
     Book *book;
     struct TreeNode *left, *right;
 } TreeNode;
 
-/* STACK node: one action done by the user (for history and undo) */
 typedef struct Action {
-    char type;                      /* A=Add I=Issue R=Return W=Wait D=Delete */
+    char type;
     int bookId;
-    char s1[PERSON_LEN];            /* main student / title               */
-    char s2[PERSON_LEN];            /* student auto-issued on return      */
+    char s1[PERSON_LEN];
+    char s2[PERSON_LEN];
     struct Action *next;
 } Action;
 
-/* Global heads */
-Book     *head = NULL;              /* head of linked list */
-TreeNode *root = NULL;              /* root of BST         */
-Action   *top  = NULL;              /* top of stack        */
+Book     *head = NULL;
+TreeNode *root = NULL;
+Action   *top  = NULL;
 int totalBooks = 0;
-
-/* ------------------------------------------------------------
- *  SMALL HELPER FUNCTIONS (input and strings)
- * ------------------------------------------------------------ */
 
 void copyStr(char *dst, const char *src, int size) {
     strncpy(dst, src, size - 1);
@@ -76,7 +48,7 @@ void readLine(const char *prompt, char *buf, int size) {
     printf("%s", prompt);
     if (fgets(buf, size, stdin) == NULL) { buf[0] = '\0'; return; }
     buf[strcspn(buf, "\r\n")] = '\0';
-    for (int i = 0; buf[i]; i++)            /* ';' is used in the data file */
+    for (int i = 0; buf[i]; i++)
         if (buf[i] == ';') buf[i] = ',';
 }
 
@@ -85,15 +57,11 @@ int readInt(const char *prompt) {
     int x;
     while (1) {
         printf("%s", prompt);
-        if (fgets(line, sizeof line, stdin) == NULL) return 0;   /* EOF = exit */
+        if (fgets(line, sizeof line, stdin) == NULL) return 0;
         if (sscanf(line, "%d", &x) == 1) return x;
         printf("Please enter a number.\n");
     }
 }
-
-/* ------------------------------------------------------------
- *  STACK  (history + undo)
- * ------------------------------------------------------------ */
 
 void push(char type, int id, const char *s1, const char *s2) {
     Action *a = (Action *)malloc(sizeof(Action));
@@ -104,10 +72,6 @@ void push(char type, int id, const char *s1, const char *s2) {
     a->next = top;
     top = a;
 }
-
-/* ------------------------------------------------------------
- *  BINARY SEARCH TREE  (index by Book ID)
- * ------------------------------------------------------------ */
 
 TreeNode *bstInsert(TreeNode *r, Book *b) {
     if (r == NULL) {
@@ -137,7 +101,7 @@ TreeNode *bstDelete(TreeNode *r, int id) {
     else {
         if (r->left == NULL) { TreeNode *t = r->right; free(r); return t; }
         if (r->right == NULL) { TreeNode *t = r->left; free(r); return t; }
-        TreeNode *s = r->right;                 /* inorder successor */
+        TreeNode *s = r->right;
         while (s->left != NULL) s = s->left;
         r->id = s->id;
         r->book = s->book;
@@ -170,10 +134,6 @@ void freeTree(TreeNode *r) {
     free(r);
 }
 
-/* ------------------------------------------------------------
- *  QUEUE  (waiting list of one book)
- * ------------------------------------------------------------ */
-
 void enqueue(Book *b, const char *name) {
     WaitNode *n = (WaitNode *)malloc(sizeof(WaitNode));
     copyStr(n->student, name, PERSON_LEN);
@@ -192,7 +152,7 @@ int dequeue(Book *b, char *out) {
     return 1;
 }
 
-void enqueueFront(Book *b, const char *name) {      /* used only by Undo */
+void enqueueFront(Book *b, const char *name) {
     WaitNode *n = (WaitNode *)malloc(sizeof(WaitNode));
     copyStr(n->student, name, PERSON_LEN);
     n->next = b->wFront;
@@ -200,7 +160,7 @@ void enqueueFront(Book *b, const char *name) {      /* used only by Undo */
     if (b->wRear == NULL) b->wRear = n;
 }
 
-void removeLastWaiting(Book *b) {                   /* used only by Undo */
+void removeLastWaiting(Book *b) {
     if (b->wFront == NULL) return;
     if (b->wFront == b->wRear) {
         free(b->wFront);
@@ -220,10 +180,6 @@ int waitingCount(Book *b) {
     return c;
 }
 
-/* ------------------------------------------------------------
- *  LINKED LIST  (all books)
- * ------------------------------------------------------------ */
-
 Book *addBookNode(int id, const char *title, const char *author, const char *issuedTo) {
     Book *b = (Book *)malloc(sizeof(Book));
     b->id = id;
@@ -233,13 +189,13 @@ Book *addBookNode(int id, const char *title, const char *author, const char *iss
     b->wFront = b->wRear = NULL;
     b->next = NULL;
 
-    if (head == NULL) head = b;                     /* insert at end */
+    if (head == NULL) head = b;
     else {
         Book *t = head;
         while (t->next != NULL) t = t->next;
         t->next = b;
     }
-    root = bstInsert(root, b);                      /* also put in BST */
+    root = bstInsert(root, b);
     totalBooks++;
     return b;
 }
@@ -254,14 +210,10 @@ void removeBook(int id) {
     root = bstDelete(root, id);
 
     char tmp[PERSON_LEN];
-    while (dequeue(t, tmp)) { }                     /* free waiting queue */
+    while (dequeue(t, tmp)) { }
     free(t);
     totalBooks--;
 }
-
-/* ------------------------------------------------------------
- *  MENU OPERATIONS
- * ------------------------------------------------------------ */
 
 void addBook() {
     char title[NAME_LEN], author[NAME_LEN];
@@ -333,7 +285,7 @@ void returnBook() {
     if (b->issuedTo[0] == '\0') { printf("This book is not issued.\n"); return; }
 
     copyStr(returnedBy, b->issuedTo, PERSON_LEN);
-    if (dequeue(b, nextStudent)) {                  /* serve first student in queue */
+    if (dequeue(b, nextStudent)) {
         copyStr(b->issuedTo, nextStudent, PERSON_LEN);
         printf("Book returned by %s.\n", returnedBy);
         printf("Automatically issued to next student in queue: %s.\n", nextStudent);
@@ -392,7 +344,7 @@ void showHistory() {
 void undoLast() {
     if (top == NULL) { printf("Nothing to undo.\n"); return; }
     Action *a = top;
-    top = a->next;                                  /* pop */
+    top = a->next;
     Book *b = bstSearch(root, a->bookId);
 
     printf("Undoing: ");
@@ -410,7 +362,7 @@ void undoLast() {
             break;
         case 'R':
             if (b) {
-                if (a->s2[0]) enqueueFront(b, a->s2);   /* put student back in queue */
+                if (a->s2[0]) enqueueFront(b, a->s2);
                 copyStr(b->issuedTo, a->s1, PERSON_LEN);
             }
             break;
@@ -422,10 +374,6 @@ void undoLast() {
     printf("Undo done.\n");
     free(a);
 }
-
-/* ------------------------------------------------------------
- *  FILE HANDLING  (save / load books)
- * ------------------------------------------------------------ */
 
 void saveBooks() {
     FILE *f = fopen(DATA_FILE, "w");
@@ -439,7 +387,7 @@ void saveBooks() {
 
 void loadBooks() {
     FILE *f = fopen(DATA_FILE, "r");
-    if (f == NULL) return;                          /* first run: no file */
+    if (f == NULL) return;
     char line[256], t[NAME_LEN], a[NAME_LEN], s[PERSON_LEN];
     int id;
     while (fgets(line, sizeof line, f)) {
@@ -451,10 +399,6 @@ void loadBooks() {
     }
     fclose(f);
 }
-
-/* ------------------------------------------------------------
- *  CLEANUP and MAIN
- * ------------------------------------------------------------ */
 
 void freeAll() {
     while (head != NULL) {
